@@ -1,4 +1,4 @@
-module main
+module go-crypto
 
 go 1.19
 

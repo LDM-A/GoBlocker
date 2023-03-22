@@ -3,10 +3,10 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
+	"go-crypto/crypto"
+	"go-crypto/util"
 	"testing"
 
-	"github.com/LarsDMsoftware/GoBlocker/crypto"
-	"github.com/LarsDMsoftware/GoBlocker/util"
 	"github.com/stretchr/testify/assert"
 )
 
