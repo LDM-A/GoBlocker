@@ -15,6 +15,25 @@ message Header {
     int64 timeStamp = 5;
 }
 
+message TxInput {
+    // Previous Hash of the transaction containing the output we want to spend.
+    bytes prevTxHash = 1;
+    // Index of the output of the previous transaction we want to spend.
+    uint32 prevOutIndex = 2;
+
+    bytes publicKey = 3;
+    bytes signature = 4;
+}
+
+message TxOutput {
+
+    int64 amount = 1;
+    bytes address = 2;
+}
+
 message Transaction {
 
+    int32 version = 1;
+    repeated TxInput inputs = 2;
+    repeated TxOutput outputs = 3;
 }

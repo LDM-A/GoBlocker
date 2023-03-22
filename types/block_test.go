@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/LarsDMsoftware/GoBlocker/crypto"
@@ -11,6 +13,7 @@ import (
 func TestHashBlock(t *testing.T) {
 	block := util.RandomBlock()
 	hash := HashBlock(block)
+	fmt.Println(hex.EncodeToString(hash))
 	assert.Equal(t, 32, len(hash))
 }
 
