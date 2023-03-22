@@ -1,4 +1,4 @@
-module go-crypto
+module github.com/LarsDMsoftware/GoBlocker
 
 go 1.19
 

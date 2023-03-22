@@ -2,10 +2,11 @@ package util
 
 import (
 	randc "crypto/rand"
-	"go-crypto/proto"
 	"io"
 	"math/rand"
 	"time"
+
+	"github.com/LarsDMsoftware/GoBlocker/proto"
 )
 
 func RandomHash() []byte {
