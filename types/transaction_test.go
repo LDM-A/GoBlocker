@@ -7,6 +7,7 @@ import (
 	"github.com/LarsDMsoftware/GoBlocker/crypto"
 	"github.com/LarsDMsoftware/GoBlocker/proto"
 	"github.com/LarsDMsoftware/GoBlocker/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTransaction(t *testing.T) {
@@ -40,6 +41,8 @@ func TestNewTransaction(t *testing.T) {
 	}
 	sig := SignTransaction(fromPrivKey, tx)
 	input.Signature = sig.Bytes()
+
+	assert.True(t, VerifyTransaction(tx))
 
 	fmt.Printf("%+v\n", tx)
 }

@@ -9,6 +9,7 @@ import (
 
 const (
 	privateKeyLen = 64
+	signatureLen  = 64
 	pubKeyLen     = 32
 	seedLen       = 32
 	addrLen       = 20
@@ -79,6 +80,15 @@ func (p *PrivateKey) Public() *PublicKey {
 	}
 }
 
+func PublicKeyFromBytes(b []byte) *PublicKey {
+	if len(b) != pubKeyLen {
+		panic("invalid public key length")
+	}
+	return &PublicKey{
+		key: ed25519.PublicKey(b),
+	}
+}
+
 func (p *PublicKey) Address() Address {
 	return Address{
 		value: p.key[len(p.key)-addrLen:],
@@ -87,6 +97,15 @@ func (p *PublicKey) Address() Address {
 
 func (p *PublicKey) Bytes() []byte {
 	return p.key
+}
+
+func SignatureFromBytes(b []byte) *Signature {
+	if len(b) != signatureLen {
+		panic("length of the bytes not equal to 64")
+	}
+	return &Signature{
+		value: b,
+	}
 }
 
 func (s *Signature) Bytes() []byte {
