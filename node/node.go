@@ -29,7 +29,7 @@ func NewNode() *Node {
 	logger, _ := loggerConfig.Build()
 	return &Node{
 		peers:   make(map[proto.NodeClient]*proto.Version),
-		version: "blocker-0.1",
+		version: "v0.1",
 		logger:  logger.Sugar(),
 	}
 }
@@ -38,9 +38,17 @@ func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
 	n.peerLock.Lock()
 	defer n.peerLock.Unlock()
 
+	n.peers[c] = v
+
+	for _, addr := range v.PeerList {
+		if addr != n.listenAddr {
+			fmt.Printf("[%s] need to connect with %s\n", n.listenAddr, addr)
+		}
+
+	}
+
 	n.logger.Debugw("new peer connected", "addr", v.ListenAddr, "height", v.Height)
 
-	n.peers[c] = v
 }
 
 func (n *Node) deletePeer(c proto.NodeClient) {
@@ -105,10 +113,23 @@ func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*p
 
 func (n *Node) getVersion() *proto.Version {
 	return &proto.Version{
-		Version:    "blocker-0.1",
+		Version:    "v0.1",
 		Height:     0,
 		ListenAddr: n.listenAddr,
+		PeerList:   n.getPeerList(),
 	}
+}
+
+func (n *Node) getPeerList() []string {
+	n.peerLock.RLock()
+	defer n.peerLock.RUnlock()
+
+	peers := []string{}
+
+	for _, version := range n.peers {
+		peers = append(peers, version.ListenAddr)
+	}
+	return peers
 }
 
 func makeNodeClient(listenAddr string) (proto.NodeClient, error) {

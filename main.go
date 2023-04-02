@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/LarsDMsoftware/GoBlocker/node"
 	"github.com/LarsDMsoftware/GoBlocker/proto"
@@ -11,14 +12,10 @@ import (
 
 func main() {
 	makeNode(":3000", []string{})
+	time.Sleep(time.Second)
 	makeNode(":4000", []string{":3000"})
-
-	// go func() {
-	// 	for {
-	// 		time.Sleep(2 * time.Second)
-	// 		makeTransaction()
-	// 	}
-	// }()
+	time.Sleep(4 * time.Second)
+	makeNode(":5000", []string{":4000"})
 	select {}
 }
 
@@ -42,7 +39,7 @@ func makeTransaction() {
 	c := proto.NewNodeClient(client)
 
 	version := &proto.Version{
-		Version:    "blocker-0.1",
+		Version:    "v0.1",
 		Height:     1,
 		ListenAddr: ":4000",
 	}
