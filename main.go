@@ -16,6 +16,7 @@ func main() {
 	makeNode(":4000", []string{":3000"})
 	time.Sleep(4 * time.Second)
 	makeNode(":5000", []string{":4000"})
+
 	select {}
 }
 

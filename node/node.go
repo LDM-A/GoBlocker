@@ -47,7 +47,10 @@ func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
 
 	}
 
-	n.logger.Debugw("new peer connected", "addr", v.ListenAddr, "height", v.Height)
+	n.logger.Debugw("new peer successfully connected",
+		"we", n.listenAddr,
+		"remote node", v.ListenAddr,
+		"height", v.Height)
 
 }
 
