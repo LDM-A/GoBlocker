@@ -2,8 +2,10 @@ package node
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/LarsDMsoftware/GoBlocker/proto"
+	"github.com/LarsDMsoftware/GoBlocker/types"
 )
 
 type HeaderList struct {
@@ -40,6 +42,13 @@ func NewChain(bs BlockStorer) *Chain {
 	}
 }
 
+func (list *HeaderList) Get(index int) *proto.Header {
+	if index > list.Height() {
+		panic("index too high")
+	}
+	return list.headers[index]
+}
+
 func (c *Chain) Height() int {
 	return c.headers.Height()
 }
@@ -57,5 +66,10 @@ func (c *Chain) GetBlockByHash(hash []byte) (*proto.Block, error) {
 }
 
 func (c *Chain) GetBlockByHeight(height int) (*proto.Block, error) {
-	return nil, nil
+	if c.Height() < height {
+		return nil, fmt.Errorf("given height (%d) too high - height (%d)", height, c.Height())
+	}
+	header := c.headers.Get(height)
+	hash := types.HashHeader(header)
+	return c.GetBlockByHash(hash)
 }
