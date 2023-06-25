@@ -16,20 +16,27 @@ func main() {
 	// Create nodes 3000, 4000, 5000
 	// Only connect 3000 with 4000 and 4000 with 5000
 	// Through peer discovery 3000 will find and connect to 5000
-	makeNode(":3000", []string{})
+	makeNode(":3000", []string{}, true)
 	time.Sleep(time.Second)
-	makeNode(":4000", []string{":3000"})
+	makeNode(":4000", []string{":3000"}, false)
 	time.Sleep(time.Second)
-	makeNode(":5000", []string{":4000"})
+	makeNode(":5000", []string{":4000"}, false)
 
-	time.Sleep(time.Second)
-
-	makeTransaction()
-	select {}
+	for {
+		time.Sleep(2 * time.Second)
+		makeTransaction()
+	}
 }
 
-func makeNode(listenAddr string, bootstrapNodes []string) *node.Node {
-	n := node.NewNode()
+func makeNode(listenAddr string, bootstrapNodes []string, isValidator bool) *node.Node {
+	cfg := node.ServerConfig{
+		Version:    "Blocker-1",
+		ListenAddr: listenAddr,
+	}
+	if isValidator {
+		cfg.PrivateKey = crypto.GeneratePrivateKey()
+	}
+	n := node.NewNode(cfg)
 	go n.Start(listenAddr, bootstrapNodes)
 
 	return n
