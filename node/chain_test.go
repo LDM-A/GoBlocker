@@ -3,8 +3,8 @@ package node
 import (
 	"testing"
 
-	"github.com/LarsDMsoftware/GoBlocker/types"
-	"github.com/LarsDMsoftware/GoBlocker/util"
+	"github.com/LDM-A/GoBlocker/types"
+	"github.com/LDM-A/GoBlocker/util"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/LarsDMsoftware/GoBlocker/proto"
-	"github.com/LarsDMsoftware/GoBlocker/types"
+	"github.com/LDM-A/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/types"
 )
 
 type HeaderList struct {

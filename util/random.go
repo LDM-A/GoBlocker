@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/LarsDMsoftware/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/proto"
 )
 
 func RandomHash() []byte {

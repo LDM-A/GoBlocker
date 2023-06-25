@@ -2,15 +2,42 @@ package node
 
 import (
 	"context"
-	"fmt"
+	"encoding/hex"
 	"net"
 	"sync"
 
-	"github.com/LarsDMsoftware/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/types"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 )
+
+type Mempool struct {
+	txx map[string]*proto.Transaction
+}
+
+func NewMemPool() *Mempool {
+	return &Mempool{
+		txx: make(map[string]*proto.Transaction),
+	}
+}
+
+func (pool *Mempool) Has(tx *proto.Transaction) bool {
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+	_, ok := pool.txx[hash]
+	return ok
+}
+
+func (pool *Mempool) Add(tx *proto.Transaction) bool {
+	if pool.Has(tx) {
+		return false
+	}
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+	pool.txx[hash] = tx
+
+	return true
+}
 
 type Node struct {
 	version    string
@@ -19,7 +46,7 @@ type Node struct {
 
 	peerLock sync.RWMutex
 	peers    map[proto.NodeClient]*proto.Version
-
+	mempool  *Mempool
 	proto.UnimplementedNodeServer
 }
 
@@ -31,6 +58,7 @@ func NewNode() *Node {
 		peers:   make(map[proto.NodeClient]*proto.Version),
 		version: "v0.1",
 		logger:  logger.Sugar(),
+		mempool: NewMemPool(),
 	}
 }
 
@@ -70,9 +98,33 @@ func (n *Node) Handshake(ctx context.Context, v *proto.Version) (*proto.Version,
 
 func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*proto.Ack, error) {
 	peer, _ := peer.FromContext(ctx)
-	fmt.Println("received tx from:", peer)
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+
+	if n.mempool.Add(tx) {
+		n.logger.Debugw("Received tx", "from", peer.Addr, "hash", hash, "we", n.listenAddr)
+		go func() {
+			if err := n.broadcast(tx); err != nil {
+				n.logger.Errorw("broadcast error", "err", err)
+			}
+		}()
+	}
+
 	return &proto.Ack{}, nil
 }
+
+func (n *Node) broadcast(msg any) error {
+	for peer := range n.peers {
+		switch v := msg.(type) {
+		case *proto.Transaction:
+			_, err := peer.HandleTransaction(context.Background(), v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
 	n.peerLock.Lock()
 	defer n.peerLock.Unlock()
