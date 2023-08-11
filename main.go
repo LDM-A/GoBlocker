@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/LarsDMsoftware/GoBlocker/crypto"
-	"github.com/LarsDMsoftware/GoBlocker/node"
-	"github.com/LarsDMsoftware/GoBlocker/proto"
-	"github.com/LarsDMsoftware/GoBlocker/util"
+	"github.com/LDM-A/GoBlocker/crypto"
+	"github.com/LDM-A/GoBlocker/node"
+	"github.com/LDM-A/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/util"
 	"google.golang.org/grpc"
 )
 
@@ -23,11 +23,9 @@ func main() {
 	makeNode(":5000", []string{":4000"}, false)
 
 	for {
-		time.Sleep(time.Second * 2)
+		time.Sleep(2 * time.Second)
 		makeTransaction()
 	}
-
-	select {}
 }
 
 func makeNode(listenAddr string, bootstrapNodes []string, isValidator bool) *node.Node {

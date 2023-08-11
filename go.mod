@@ -1,4 +1,4 @@
-module github.com/LarsDMsoftware/GoBlocker
+module github.com/LDM-A/GoBlocker
 
 go 1.19
 

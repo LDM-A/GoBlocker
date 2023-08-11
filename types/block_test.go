@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/LarsDMsoftware/GoBlocker/util"
+	"github.com/LDM-A/GoBlocker/util"
 
-	"github.com/LarsDMsoftware/GoBlocker/crypto"
+	"github.com/LDM-A/GoBlocker/crypto"
 
 	"github.com/stretchr/testify/assert"
 )

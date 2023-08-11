@@ -7,43 +7,49 @@ import (
 	"sync"
 	"time"
 
-	"github.com/LarsDMsoftware/GoBlocker/crypto"
-	"github.com/LarsDMsoftware/GoBlocker/proto"
-	"github.com/LarsDMsoftware/GoBlocker/types"
+	"github.com/LDM-A/GoBlocker/crypto"
+	"github.com/LDM-A/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/types"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 )
 
-const blockTime = time.Second * 5
-
-type ServerConfig struct {
-	Version    string
-	ListenAddr string
-	PrivateKey *crypto.PrivateKey
-}
-type Node struct {
-	ServerConfig
-	logger *zap.SugaredLogger
-
-	peerLock sync.RWMutex
-	peers    map[proto.NodeClient]*proto.Version
-	mempool  *Mempool
-
-	proto.UnimplementedNodeServer
-}
-
 type Mempool struct {
-	txx map[string]*proto.Transaction
+	lock sync.RWMutex
+	txx  map[string]*proto.Transaction
 }
 
-func NewMempool() *Mempool {
+func NewMemPool() *Mempool {
 	return &Mempool{
 		txx: make(map[string]*proto.Transaction),
 	}
 }
 
+func (pool *Mempool) Clear() []*proto.Transaction {
+	pool.lock.Lock()
+	defer pool.lock.Unlock()
+
+	txx := make([]*proto.Transaction, len(pool.txx))
+	it := 0
+	for k, v := range pool.txx {
+		delete(pool.txx, k)
+		txx[it] = v
+		it++
+	}
+
+	return txx
+}
+
+func (pool *Mempool) Len() int {
+	pool.lock.RLock()
+	defer pool.lock.Unlock()
+	return len(pool.txx)
+}
+
 func (pool *Mempool) Has(tx *proto.Transaction) bool {
+	pool.lock.RLock()
+	defer pool.lock.RUnlock()
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 	_, ok := pool.txx[hash]
 	return ok
@@ -53,9 +59,26 @@ func (pool *Mempool) Add(tx *proto.Transaction) bool {
 	if pool.Has(tx) {
 		return false
 	}
+	pool.lock.Lock()
+	defer pool.lock.Unlock()
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 	pool.txx[hash] = tx
+
 	return true
+}
+
+type ServerConfig struct {
+	Version    string
+	ListenAddr string
+	PrivateKey *crypto.PrivateKey
+}
+type Node struct {
+	ServerConfig
+	logger   *zap.SugaredLogger
+	peerLock sync.RWMutex
+	peers    map[proto.NodeClient]*proto.Version
+	mempool  *Mempool
+	proto.UnimplementedNodeServer
 }
 
 func NewNode(cfg ServerConfig) *Node {
@@ -63,11 +86,10 @@ func NewNode(cfg ServerConfig) *Node {
 	loggerConfig.EncoderConfig.TimeKey = ""
 	logger, _ := loggerConfig.Build()
 	return &Node{
-		peers: make(map[proto.NodeClient]*proto.Version),
-
-		logger:       logger.Sugar(),
-		mempool:      NewMempool(),
 		ServerConfig: cfg,
+		peers:        make(map[proto.NodeClient]*proto.Version),
+		logger:       logger.Sugar(),
+		mempool:      NewMemPool(),
 	}
 }
 
@@ -90,11 +112,9 @@ func (n *Node) Start(listenAddr string, boostrapNodes []string) error {
 	if len(boostrapNodes) > 0 {
 		go n.bootstrapNetwork(boostrapNodes)
 	}
-
 	if n.PrivateKey != nil {
 		go n.validatorLoop()
 	}
-
 	return grpcServer.Serve(ln)
 }
 
@@ -114,7 +134,7 @@ func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*p
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 
 	if n.mempool.Add(tx) {
-		n.logger.Debugw("received tx", "from", peer.Addr, "hash", hash, "we", n.ListenAddr)
+		n.logger.Debugw("Received tx", "from", peer.Addr, "hash", hash, "we", n.ListenAddr)
 		go func() {
 			if err := n.broadcast(tx); err != nil {
 				n.logger.Errorw("broadcast error", "err", err)
@@ -124,28 +144,20 @@ func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*p
 
 	return &proto.Ack{}, nil
 }
-func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
-	n.peerLock.Lock()
-	defer n.peerLock.Unlock()
 
-	n.peers[c] = v
-	if len(v.PeerList) > 0 {
-		go n.bootstrapNetwork(v.PeerList)
-	}
-	n.logger.Debugw("new peer successfully connected",
-		"we", n.ListenAddr,
-		"remote node", v.ListenAddr,
-		"height", v.Height)
-
-}
+const blockTime = time.Second * 5
 
 func (n *Node) validatorLoop() {
-
-	n.logger.Infow("starting validator loop", "pubkey", n.PrivateKey.Public(), "block time", blockTime)
+	n.logger.Infow("starting validator loop", "pubkey", n.PrivateKey.Public(), "blocktime", blockTime)
 	ticker := time.NewTicker(blockTime)
 	for {
+
 		<-ticker.C
-		n.logger.Debugw("creating a new block", "lenTX", len(n.mempool.txx))
+		n.logger.Debugw("creating new block", "lenTx", len(n.mempool.txx))
+		for hash := range n.mempool.txx {
+			delete(n.mempool.txx, hash)
+		}
+
 	}
 }
 
@@ -160,6 +172,21 @@ func (n *Node) broadcast(msg any) error {
 		}
 	}
 	return nil
+}
+
+func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
+	n.peerLock.Lock()
+	defer n.peerLock.Unlock()
+
+	n.peers[c] = v
+	if len(v.PeerList) > 0 {
+		go n.bootstrapNetwork(v.PeerList)
+	}
+	n.logger.Debugw("new peer successfully connected",
+		"we", n.ListenAddr,
+		"remote node", v.ListenAddr,
+		"height", v.Height)
+
 }
 
 func (n *Node) deletePeer(c proto.NodeClient) {

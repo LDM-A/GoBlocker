@@ -3,8 +3,8 @@ package types
 import (
 	"crypto/sha256"
 
-	"github.com/LarsDMsoftware/GoBlocker/crypto"
-	"github.com/LarsDMsoftware/GoBlocker/proto"
+	"github.com/LDM-A/GoBlocker/crypto"
+	"github.com/LDM-A/GoBlocker/proto"
 
 	pb "github.com/golang/protobuf/proto"
 )
