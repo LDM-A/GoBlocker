@@ -98,6 +98,9 @@ func TestAddBlockWithTx(t *testing.T) {
 		Outputs: outputs,
 	}
 
+	sig := types.SignTransaction(privKey, tx)
+	tx.Inputs[0].Signature = sig.Bytes()
+
 	block.Transactions = append(block.Transactions, tx)
 
 	require.Nil(t, chain.AddBlock(block))
@@ -106,5 +109,12 @@ func TestAddBlockWithTx(t *testing.T) {
 	fetchedTx, err := chain.txStore.Get(txHash)
 	assert.Nil(t, err)
 	assert.Equal(t, tx, fetchedTx)
+
+	// check if utxo is unspent
+	address := crypto.AddressFromBytes(tx.Outputs[1].Address)
+	key := fmt.Sprintf("%s_%s", address, txHash)
+	utxo, err := chain.utxoStore.Get(key)
+	assert.Nil(t, err)
+	fmt.Println(utxo)
 
 }

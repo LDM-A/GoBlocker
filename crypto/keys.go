@@ -125,6 +125,16 @@ func (s *Signature) Verify(pubKey *PublicKey, msg []byte) bool {
 	return ed25519.Verify(pubKey.key, msg, s.value)
 }
 
+func AddressFromBytes(b []byte) Address {
+	if len(b) != AddrLen {
+		panic("length of the bytes not equal to addres length")
+	}
+
+	return Address{
+		value: b,
+	}
+}
+
 func (a Address) String() string {
 	return hex.EncodeToString(a.value)
 }
