@@ -1,6 +1,8 @@
 package node
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/LDM-A/GoBlocker/crypto"
@@ -22,7 +24,7 @@ func RandomBlock(t *testing.T, chain *Chain) *proto.Block {
 }
 
 func TestNewChain(t *testing.T) {
-	chain := NewChain(NewMemoryBlockStore())
+	chain := NewChain(NewMemoryBlockStore(), newMemoryTXStore())
 	assert.Equal(t, 0, chain.Height())
 	_, err := chain.GetBlockByHeight(0)
 
@@ -30,7 +32,7 @@ func TestNewChain(t *testing.T) {
 }
 
 func TestChainHeight(t *testing.T) {
-	chain := NewChain(NewMemoryBlockStore())
+	chain := NewChain(NewMemoryBlockStore(), newMemoryTXStore())
 	for i := 0; i < 100; i++ {
 		b := RandomBlock(t, chain)
 
@@ -41,7 +43,8 @@ func TestChainHeight(t *testing.T) {
 
 func TestAddBlock(t *testing.T) {
 	bs := NewMemoryBlockStore()
-	chain := NewChain(bs)
+	txs := newMemoryTXStore()
+	chain := NewChain(bs, txs)
 
 	for i := 0; i < 100; i++ {
 		block := RandomBlock(t, chain)
@@ -56,5 +59,52 @@ func TestAddBlock(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, block, fetchedBlockByHeight)
 	}
+
+}
+
+func TestAddBlockWithTx(t *testing.T) {
+	var (
+		bs        = NewMemoryBlockStore()
+		txs       = newMemoryTXStore()
+		chain     = NewChain(bs, txs)
+		block     = RandomBlock(t, chain)
+		privKey   = crypto.NewPrivateKeyFromSeedStr(seed)
+		recipient = crypto.GeneratePrivateKey().Public().Address().Bytes()
+	)
+	ftt, err := chain.txStore.Get("b074e82904eaf4d97fb5cdddfcfd63b0930f72e16387df8d395331a7788a2936")
+
+	assert.Nil(t, err)
+	fmt.Println(ftt)
+	inputs := []*proto.TxInput{
+		{
+			PrevTxHash:   types.HashTransaction(ftt),
+			PrevOutIndex: 0,
+			PublicKey:    privKey.Public().Bytes(),
+		},
+	}
+	outputs := []*proto.TxOutput{
+		{
+			Amount:  100,
+			Address: recipient,
+		},
+		{
+			Amount:  900,
+			Address: privKey.Public().Address().Bytes(),
+		},
+	}
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs:  inputs,
+		Outputs: outputs,
+	}
+
+	block.Transactions = append(block.Transactions, tx)
+
+	require.Nil(t, chain.AddBlock(block))
+	txHash := hex.EncodeToString(types.HashTransaction(tx))
+
+	fetchedTx, err := chain.txStore.Get(txHash)
+	assert.Nil(t, err)
+	assert.Equal(t, tx, fetchedTx)
 
 }

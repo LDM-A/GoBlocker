@@ -13,9 +13,7 @@ import (
 )
 
 func main() {
-	// Create nodes 3000, 4000, 5000
-	// Only connect 3000 with 4000 and 4000 with 5000
-	// Through peer discovery 3000 will find and connect to 5000
+
 	makeNode(":3000", []string{}, true)
 	time.Sleep(time.Second)
 	makeNode(":4000", []string{":3000"}, false)

@@ -10,6 +10,8 @@ import (
 	"github.com/LDM-A/GoBlocker/types"
 )
 
+const seed = "f3c6d62c34725bd8c0c176738425d4d9e4a2f4d280886714f47e0acd250da504"
+
 type HeaderList struct {
 	headers []*proto.Header
 }
@@ -34,12 +36,14 @@ func (list *HeaderList) Height() int {
 
 type Chain struct {
 	blockStore BlockStorer
+	txStore    TXStorer
 	headers    *HeaderList
 }
 
-func NewChain(bs BlockStorer) *Chain {
+func NewChain(bs BlockStorer, txStore TXStorer) *Chain {
 	chain := &Chain{
 		blockStore: bs,
+		txStore:    txStore,
 		headers:    NewHeaderList(),
 	}
 	chain.addBlock(createGenesisBlock())
@@ -69,7 +73,14 @@ func (c *Chain) addBlock(b *proto.Block) error {
 
 	// Add the header to the list of headers
 	c.headers.Add(b.Header)
-	//validation
+
+	for _, tx := range b.Transactions {
+		fmt.Println("NEW TX: ", hex.EncodeToString(types.HashTransaction(tx)))
+		if err := c.txStore.Put(tx); err != nil {
+			return err
+		}
+	}
+
 	return c.blockStore.Put(b)
 }
 
@@ -105,12 +116,27 @@ func (c *Chain) ValidateBlock(b *proto.Block) error {
 }
 
 func createGenesisBlock() *proto.Block {
-	privKey := crypto.GeneratePrivateKey()
+	privKey := crypto.NewPrivateKeyFromSeedStr(seed)
+
 	block := &proto.Block{
 		Header: &proto.Header{
 			Version: 1,
 		},
 	}
+
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs:  []*proto.TxInput{},
+		Outputs: []*proto.TxOutput{
+			{
+				Amount:  1000,
+				Address: privKey.Public().Address().Bytes(),
+			},
+		},
+	}
+
+	block.Transactions = append(block.Transactions, tx)
+	types.SignBlock(privKey, block)
 
 	types.SignBlock(privKey, block)
 	return block
