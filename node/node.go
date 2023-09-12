@@ -153,11 +153,10 @@ func (n *Node) validatorLoop() {
 	for {
 
 		<-ticker.C
-		n.logger.Debugw("creating new block", "lenTx", len(n.mempool.txx))
-		for hash := range n.mempool.txx {
-			delete(n.mempool.txx, hash)
-		}
 
+		txx := n.mempool.Clear()
+
+		n.logger.Debugw("creating new block", "lenTx", len(txx))
 	}
 }
 

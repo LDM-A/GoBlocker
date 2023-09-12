@@ -1,9 +1,11 @@
 package node
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 
+	"github.com/LDM-A/GoBlocker/crypto"
 	"github.com/LDM-A/GoBlocker/proto"
 	"github.com/LDM-A/GoBlocker/types"
 )
@@ -36,10 +38,13 @@ type Chain struct {
 }
 
 func NewChain(bs BlockStorer) *Chain {
-	return &Chain{
+	chain := &Chain{
 		blockStore: bs,
 		headers:    NewHeaderList(),
 	}
+	chain.addBlock(createGenesisBlock())
+
+	return chain
 }
 
 func (list *HeaderList) Get(index int) *proto.Header {
@@ -54,6 +59,14 @@ func (c *Chain) Height() int {
 }
 
 func (c *Chain) AddBlock(b *proto.Block) error {
+	if err := c.ValidateBlock(b); err != nil {
+		return err
+	}
+	return c.addBlock(b)
+}
+
+func (c *Chain) addBlock(b *proto.Block) error {
+
 	// Add the header to the list of headers
 	c.headers.Add(b.Header)
 	//validation
@@ -72,4 +85,33 @@ func (c *Chain) GetBlockByHeight(height int) (*proto.Block, error) {
 	header := c.headers.Get(height)
 	hash := types.HashHeader(header)
 	return c.GetBlockByHash(hash)
+}
+
+func (c *Chain) ValidateBlock(b *proto.Block) error {
+	// validate sign of block
+	if !types.VerifyBlock(b) {
+		return fmt.Errorf("invalid block signature")
+	}
+	// Validate if the previous hash is actually the hash of the current block
+	currentBlock, err := c.GetBlockByHeight(c.Height())
+	if err != nil {
+		return err
+	}
+	hash := types.HashBlock(currentBlock)
+	if !bytes.Equal(hash, b.Header.PreviousHash) {
+		return fmt.Errorf("invalid previous block hash")
+	}
+	return nil
+}
+
+func createGenesisBlock() *proto.Block {
+	privKey := crypto.GeneratePrivateKey()
+	block := &proto.Block{
+		Header: &proto.Header{
+			Version: 1,
+		},
+	}
+
+	types.SignBlock(privKey, block)
+	return block
 }
