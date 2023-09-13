@@ -96,9 +96,7 @@ func (c *Chain) addBlock(b *proto.Block) error {
 				OutIndex: it,
 				Spent:    false,
 			}
-			address := crypto.AddressFromBytes(output.Address)
-			key := fmt.Sprintf("%s_%s", address, hash)
-			if err := c.utxoStore.Put(key, utxo); err != nil {
+			if err := c.utxoStore.Put(utxo); err != nil {
 				return err
 			}
 		}
@@ -138,9 +136,39 @@ func (c *Chain) ValidateBlock(b *proto.Block) error {
 	}
 
 	for _, tx := range b.Transactions {
-		if !types.VerifyTransaction(tx) {
-			return fmt.Errorf("invalid transaction")
+		if c.ValidateTransaction(tx); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func (c *Chain) ValidateTransaction(tx *proto.Transaction) error {
+	if !types.VerifyTransaction(tx) {
+		return fmt.Errorf("invalid transaction")
+	}
+
+	// check if all inputs are unspent by querying the utxo storage
+	sumInputs := 0
+	nInputs := len(tx.Inputs)
+	hash := types.HashTransaction(tx)
+	for i := 0; i < nInputs; i++ {
+		key := fmt.Sprintf("%s_%d", tx.Inputs[i].PrevTxHash, i)
+		utxo, err := c.utxoStore.Get(key)
+		sumInputs += int(utxo.Amount)
+		if err != nil {
+			return err
+		}
+		if utxo.Spent {
+			return fmt.Errorf("Output %d of %s is already spent", i, hash)
+		}
+	}
+	sumOuts := 0
+	for _, output := range tx.Outputs {
+		sumOuts += int(output.Amount)
+	}
+	if sumInputs < sumOuts {
+		return fmt.Errorf("Insufficient Balance")
 	}
 	return nil
 }
