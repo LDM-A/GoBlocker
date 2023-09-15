@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/LDM-A/GoBlocker/proto"
 	"github.com/LDM-A/GoBlocker/util"
 
 	"github.com/LDM-A/GoBlocker/crypto"
@@ -39,5 +40,18 @@ func TestVerifySignBlock(t *testing.T) {
 	block.PublicKey = invalidPrivKey.Public().Bytes()
 
 	assert.False(t, VerifyBlock(block))
+
+}
+
+func TestCalculateRootHash(t *testing.T) {
+	privKey := crypto.GeneratePrivateKey()
+	block := util.RandomBlock()
+	tx := &proto.Transaction{
+		Version: 1,
+	}
+	block.Transactions = append(block.Transactions, tx)
+	SignBlock(privKey, block)
+	assert.True(t, VerifyRootHash(block))
+	assert.Equal(t, 32, len(block.Header.RootHash))
 
 }
